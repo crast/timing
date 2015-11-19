@@ -1,0 +1,2 @@
+# timing
+Golang timing library
