@@ -68,7 +68,7 @@ func (t *Timing) ReportInto(dest Report) {
 		// calculate all the percentiles
 		for _, p := range percentiles {
 			// TODO do we need a ceiling operator?
-			target := len(records) * 100 / p
+			target := len(records) * p / 100
 			dest[fmt.Sprintf("%s_%dth", k, p)] = records[target].elapsed.String()
 		}
 	}
