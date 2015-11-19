@@ -63,12 +63,16 @@ func (t *Timing) ReportInto(dest Report) {
 		for _, record := range records {
 			total += record.elapsed
 		}
+		dest[fmt.Sprintf("%s_samples", k)] = len(records)
 		dest[fmt.Sprintf("%s_avg", k)] = (total / time.Duration(len(records))).String()
 
 		// calculate all the percentiles
 		for _, p := range percentiles {
 			// TODO do we need a ceiling operator?
 			target := len(records) * p / 100
+			if target >= len(records) {
+				target = len(records) - 1
+			}
 			dest[fmt.Sprintf("%s_%dth", k, p)] = records[target].elapsed.String()
 		}
 	}
