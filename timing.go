@@ -65,6 +65,8 @@ func (t *Timing) ReportInto(dest Report) {
 		}
 		dest[fmt.Sprintf("%s_samples", k)] = len(records)
 		dest[fmt.Sprintf("%s_avg", k)] = (total / time.Duration(len(records))).String()
+		dest[fmt.Sprintf("%s_best", k)] = records[0]
+		dest[fmt.Sprintf("%s_worst", k)] = records[len(records)-1]
 
 		// calculate all the percentiles
 		for _, p := range percentiles {
