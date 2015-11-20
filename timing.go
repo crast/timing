@@ -3,7 +3,7 @@ package timing
 import (
 	"fmt"
 	"sort"
-	"sync/atomic"
+	"sync"
 	"time"
 )
 
@@ -15,6 +15,7 @@ func New() *Timing {
 		results:   make(chan record, 10),
 		collected: make(map[string][]record),
 	}
+	t.wg.Add(1)
 	go t.collector()
 	return t
 }
@@ -22,15 +23,16 @@ func New() *Timing {
 type Timing struct {
 	begin     time.Time
 	results   chan record
-	done      int32
+	wg        sync.WaitGroup
+	closeOnce sync.Once
 	collected map[string][]record
 }
 
 func (t *Timing) collector() {
+	defer t.wg.Done()
 	for result := range t.results {
 		t.collected[result.key] = append(t.collected[result.key], result)
 	}
-	atomic.AddInt32(&t.done, 1)
 }
 
 func (t *Timing) Log(elapsed time.Duration, key string) {
@@ -52,9 +54,10 @@ func (t *Timing) Report() Report {
 
 func (t *Timing) ReportInto(dest Report) {
 	dest["elapsed"] = time.Since(t.begin).String()
-	if atomic.LoadInt32(&t.done) == 0 {
+	t.closeOnce.Do(func() {
 		close(t.results)
-	}
+	})
+	t.wg.Wait()
 	for k, records := range t.collected {
 		sort.Sort(recordsByTime(records))
 
@@ -65,8 +68,8 @@ func (t *Timing) ReportInto(dest Report) {
 		}
 		dest[fmt.Sprintf("%s_samples", k)] = len(records)
 		dest[fmt.Sprintf("%s_avg", k)] = (total / time.Duration(len(records))).String()
-		dest[fmt.Sprintf("%s_best", k)] = records[0]
-		dest[fmt.Sprintf("%s_worst", k)] = records[len(records)-1]
+		dest[fmt.Sprintf("%s_best", k)] = records[0].elapsed
+		dest[fmt.Sprintf("%s_worst", k)] = records[len(records)-1].elapsed
 
 		// calculate all the percentiles
 		for _, p := range percentiles {
